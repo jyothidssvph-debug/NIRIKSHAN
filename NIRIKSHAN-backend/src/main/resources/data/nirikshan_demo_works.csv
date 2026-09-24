@@ -1,0 +1,7 @@
+id,constituency,district,workName,sanctionedAmount,expenditure,physicalProgress,plannedDays,elapsedDays,status
+MPLADS-001,Nandyal,Nandyal,Community Hall Renovation,1000000,930000,42,180,240,ONGOING
+MPLADS-002,Kurnool,Kurnool,Government School Building,2500000,1200000,65,300,250,ONGOING
+MPLADS-003,Anantapur,Anantapur,Road Improvement,1800000,600000,72,180,140,ONGOING
+MPLADS-004,Kadapa,YSR Kadapa,Drinking Water Facility,900000,860000,88,150,145,NEAR_COMPLETE
+MPLADS-005,Chittoor,Chittoor,Public Library,1500000,350000,25,240,220,ONGOING
+MPLADS-006,Nellore,SPSR Nellore,Drainage Improvement,1300000,1250000,35,200,260,DELAYED
