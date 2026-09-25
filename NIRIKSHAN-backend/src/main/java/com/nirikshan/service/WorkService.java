@@ -16,7 +16,8 @@ public class WorkService {
         new Work("MPLADS-003","Anantapur","Anantapur","Road Improvement",1800000,600000,72,180,140,"ONGOING"),
         new Work("MPLADS-004","Kadapa","YSR Kadapa","Drinking Water Facility",900000,860000,88,150,145,"NEAR_COMPLETE"),
         new Work("MPLADS-005","Chittoor","Chittoor","Public Library",1500000,350000,25,240,220,"ONGOING"),
-        new Work("MPLADS-006","Nellore","SPSR Nellore","Drainage Improvement",1300000,1250000,35,200,260,"DELAYED")
+        new Work("MPLADS-006","Nellore","SPSR Nellore","Drainage Improvement",1300000,1250000,35,200,260,"DELAYED"),
+        new Work("MPLADS-007","Nandyal","Nandyal","Community Hall Renovation",980000,700000,58,180,190,"ONGOING")
     ));
 
     public WorkService(RiskEngine riskEngine) { this.riskEngine = riskEngine; }
@@ -24,6 +25,53 @@ public class WorkService {
     public synchronized Work get(String id) { return works.stream().filter(w -> w.id().equalsIgnoreCase(id)).findFirst().orElse(null); }
     public synchronized List<RiskResult> risks() { return works.stream().map(riskEngine::assess).sorted(Comparator.comparingInt(RiskResult::score).reversed()).toList(); }
     public synchronized RiskResult risk(String id) { Work w = get(id); return w == null ? null : riskEngine.assess(w); }
+
+    public synchronized List<RelatedWork> related(String id) {
+        Work target = get(id);
+        if (target == null) return List.of();
+        return works.stream()
+                .filter(w -> !w.id().equalsIgnoreCase(target.id()))
+                .map(w -> new RelatedWork(w.id(), w.workName(), similarity(target, w), relationReason(target, w)))
+                .filter(x -> x.similarity() >= 55)
+                .sorted(Comparator.comparingDouble(RelatedWork::similarity).reversed())
+                .limit(5)
+                .toList();
+    }
+
+    private double similarity(Work a, Work b) {
+        double text = textSimilarity(a.workName(), b.workName());
+        double location = (a.constituency().equalsIgnoreCase(b.constituency()) || a.district().equalsIgnoreCase(b.district())) ? 100 : 0;
+        double cost = costSimilarity(a.sanctionedAmount(), b.sanctionedAmount());
+        return Math.round((text * 0.50 + location * 0.30 + cost * 0.20) * 10.0) / 10.0;
+    }
+
+    private String relationReason(Work a, Work b) {
+        List<String> reasons = new ArrayList<>();
+        if (a.constituency().equalsIgnoreCase(b.constituency())) reasons.add("same constituency");
+        if (a.district().equalsIgnoreCase(b.district())) reasons.add("same district");
+        if (textSimilarity(a.workName(), b.workName()) >= 70) reasons.add("similar work description");
+        if (costSimilarity(a.sanctionedAmount(), b.sanctionedAmount()) >= 75) reasons.add("similar sanctioned amount");
+        return reasons.isEmpty() ? "similarity across available fields" : String.join(", ", reasons);
+    }
+
+    private double costSimilarity(double a, double b) {
+        if (a <= 0 || b <= 0) return 0;
+        return Math.max(0, 100 - (Math.abs(a - b) / Math.max(a, b) * 100));
+    }
+
+    private double textSimilarity(String a, String b) {
+        Set<String> x = words(a), y = words(b);
+        if (x.isEmpty() || y.isEmpty()) return 0;
+        Set<String> intersection = new HashSet<>(x); intersection.retainAll(y);
+        Set<String> union = new HashSet<>(x); union.addAll(y);
+        return intersection.size() * 100.0 / union.size();
+    }
+
+    private Set<String> words(String s) {
+        Set<String> out = new HashSet<>();
+        for (String w : s.toLowerCase(Locale.ROOT).split("[^a-z0-9]+")) if (w.length() >= 3) out.add(w);
+        return out;
+    }
 
     public synchronized Map<String,Object> importCsv(MultipartFile file) throws IOException {
         if (file == null || file.isEmpty()) throw new IllegalArgumentException("CSV file is empty");
